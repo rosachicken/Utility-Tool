@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rescue Ops: Wildfire | Staff Utility Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c', 800: '#9a3412', 900: '#7c2d12', 950: '#0f172a' },
+                        slate: { 850: '#151e2e', 925: '#0a0f18' }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #e2e8f0; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-active { background: rgba(249, 115, 22, 0.1); border-left: 3px solid #f97316; color: white; }
+        .cyber-grid {
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+        .animate-enter { animation: enter 0.3s ease-out forwards; opacity: 0; transform: translateY(5px); }
+        @keyframes enter { to { opacity: 1; transform: translateY(0); } }
+        
+        .btn-selected {
+            background-color: #f97316 !important;
+            color: white !important;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+            border-color: #ea580c !important;
+        }
+        
+        /* Accordion transition */
+        .accordion-content { transition: max-height 0.3s ease-in-out; max-height: 0; overflow: hidden; }
+        .accordion-open { max-height: 2000px; }
+        .rotate-180 { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="overflow-hidden h-screen selection:bg-brand-500 selection:text-white">
+
+    <!-- NOTIFICATION -->
+    <div id="toast" class="fixed top-6 right-6 z-[100] transform transition-all duration-300 translate-x-full">
+        <div class="glass border-l-4 border-brand-500 p-4 rounded-r-xl shadow-2xl flex items-center gap-4 min-w-[300px]">
+            <div class="p-2 bg-brand-500/10 rounded-full text-brand-500">✓</div>
+            <div>
+                <h4 class="font-bold text-sm text-white" id="toastTitle">Notification</h4>
+                <p class="text-xs text-slate-400" id="toastMsg">Message content</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="portalView" class="fixed inset-0 z-50 bg-slate-950 cyber-grid flex flex-col items-center justify-center p-4">
+        <div class="max-w-md w-full animate-enter">
+            <div class="glass p-8 rounded-3xl border-t border-brand-500/30 shadow-2xl text-center relative overflow-hidden">
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-brand-500/20 blur-3xl rounded-full"></div>
+                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSyaIgysjGoYezKF60pYH7VDP9yuvQ9_iaPA&s" alt="Rescue Ops Logo" class="w-24 h-24 mx-auto mb-6 rounded-2xl shadow-2xl border border-brand-500/30 relative z-10">
+                <h1 class="text-3xl font-black text-white mb-1 tracking-tight">Rescue Ops: Wildfire</h1>
+                <p class="text-xs font-mono text-brand-400 uppercase tracking-[0.2em] mb-8">Staff Utility Tool</p>
+                <div class="space-y-4 relative z-10">
+                    <input type="text" id="loginName" placeholder="Staff Username..." class="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-sm text-white text-center focus:border-brand-500 outline-none transition-colors shadow-inner">
+                    <div class="relative">
+                        <select id="loginRank" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-sm text-white appearance-none text-center font-bold focus:border-brand-500 outline-none shadow-inner">
+                            <option value="Trial Moderator">Trial Moderator</option>
+                            <option value="Moderator">Moderator</option>
+                            <option value="Head Moderator">Head Moderator</option>
+                            <option value="Staff Manager">Staff Manager</option>
+                        </select>
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">▼</div>
+                    </div>
+                    <button onclick="attemptLogin()" class="w-full py-4 bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all mt-4 transform hover:scale-[1.02] active:scale-95">AUTHENTICATE</button>
+                    <p id="loginError" class="hidden text-xs text-red-400 font-bold bg-red-900/20 p-3 rounded-lg border border-red-900/30"></p>
+                </div>
+            </div>
+            <div class="mt-6 text-center"><p class="text-[10px] text-slate-600 font-mono uppercase">Internal System v7.1 • Authorized Access Only</p></div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="mainView" class="hidden flex h-full">
+        <!-- SIDEBAR -->
+        <aside class="w-72 bg-slate-925 border-r border-slate-800 flex flex-col z-20 shadow-2xl">
+            <div class="p-6 border-b border-slate-800 bg-slate-950 relative overflow-hidden">
+                <div class="flex items-center gap-4 relative z-10">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSyaIgysjGoYezKF60pYH7VDP9yuvQ9_iaPA&s" class="w-10 h-10 rounded-lg shadow-md border border-brand-500/20">
+                    <div>
+                        <h2 class="font-black text-sm text-white leading-tight">Rescue Ops</h2>
+                        <span class="text-[10px] font-bold text-brand-500 uppercase tracking-widest">Wildfire</span>
+                    </div>
+                </div>
+                <div class="mt-6 px-4 py-3 bg-slate-900/50 rounded-xl border border-slate-800 backdrop-blur-sm">
+                    <div id="userRankDisplay" class="text-[10px] font-bold text-brand-400 uppercase tracking-wider mb-0.5">RANK</div>
+                    <div id="userNameDisplay" class="text-sm font-bold text-white truncate">User</div>
+                </div>
+            </div>
+            <nav class="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+                <div class="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 px-2">Core System</div>
+                <button onclick="nav('dashboard')" id="btn-dashboard" class="w-full text-left px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition mb-1 flex items-center gap-3"><span>📊</span> Dashboard</button>
+                <button onclick="nav('matrix')" id="btn-matrix" class="w-full text-left px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition mb-1 flex items-center gap-3"><span>⚖️</span> Violation Matrix</button>
+                <button onclick="nav('handbook')" id="btn-handbook" class="w-full text-left px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition mb-1 flex items-center gap-3"><span>📚</span> Knowledge Base</button>
+                <div class="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3 mt-6 px-2">Tools</div>
+                <button onclick="nav('tools')" id="btn-tools" class="w-full text-left px-4 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition mb-1 flex items-center gap-3"><span>🛠️</span> Utilities</button>
+            </nav>
+            <div class="p-4 border-t border-slate-800 bg-slate-950">
+                <div class="flex justify-between text-[10px] font-mono text-slate-500 mb-3 bg-slate-900 rounded-lg p-2">
+                    <div class="text-center w-1/2 border-r border-slate-800"><div class="text-[9px] uppercase opacity-50">Marseille</div><b id="clockMRS" class="text-brand-500">--:--</b></div>
+                    <div class="text-center w-1/2"><div class="text-[9px] uppercase opacity-50">UTC</div><b id="clockUTC">--:--</b></div>
+                </div>
+                <button onclick="logout()" class="w-full py-3 bg-slate-900 text-slate-400 hover:text-red-400 hover:bg-red-950/30 border border-slate-800 hover:border-red-900/50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"><span>🚪</span> SIGN OUT</button>
+            </div>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+            <header class="h-20 border-b border-slate-800 bg-slate-950/80 backdrop-blur flex items-center justify-between px-8 z-10">
+                <div>
+                    <h2 id="pageTitle" class="text-xl font-bold text-white tracking-tight">Mission Control</h2>
+                    <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Staff Utility Tool v7.1</p>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div id="shiftTimer" class="font-mono text-2xl font-bold text-slate-600 tabular-nums">00:00:00</div>
+                    <button onclick="toggleShift()" id="shiftBtn" class="px-6 py-3 bg-slate-800 hover:bg-brand-600 text-white border border-slate-700 hover:border-brand-500 rounded-xl text-xs font-black transition-all shadow-lg shadow-black/20 flex items-center gap-2"><span>⏱</span> START SHIFT</button>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-hidden relative">
+                <!-- DASHBOARD VIEW -->
+                <div id="view-dashboard" class="absolute inset-0 p-8 overflow-y-auto space-y-8">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="glass p-6 rounded-2xl border-t-4 border-brand-500 hover:bg-slate-900/50 transition"><h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Total Hours</h3><div class="text-3xl font-black text-white tracking-tight" id="statHours">0.0</div></div>
+                        <div class="glass p-6 rounded-2xl border-t-4 border-blue-500 hover:bg-slate-900/50 transition"><h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Incidents</h3><div class="text-3xl font-black text-white tracking-tight" id="statIncidents">0</div></div>
+                        <div class="glass p-6 rounded-2xl border-t-4 border-green-500 hover:bg-slate-900/50 transition"><h3 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Status</h3><div class="text-xl font-black text-white tracking-tight" id="statStatus">Off Duty</div></div>
+                        <div onclick="nav('matrix')" class="glass p-6 rounded-2xl cursor-pointer hover:bg-brand-600 hover:border-brand-500 transition group border-t-4 border-slate-700"><h3 class="text-[10px] font-bold text-slate-500 group-hover:text-brand-200 uppercase tracking-widest mb-2">Quick Action</h3><div class="text-xl font-black text-white tracking-tight flex items-center gap-2">New Report <span>→</span></div></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="glass p-8 rounded-2xl border border-slate-800 lg:col-span-2">
+                            <div class="flex justify-between items-center mb-6"><h3 class="font-bold text-white flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-brand-500"></span> Shift Activity Log</h3><button onclick="clearActivity()" class="text-[10px] font-bold text-red-400 hover:text-white hover:bg-red-600 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 transition-all">CLEAR HISTORY</button></div>
+                            <div id="activityFeed" class="space-y-3 h-72 overflow-y-auto font-mono text-xs text-slate-400 pr-2 custom-scrollbar"><div class="text-center italic pt-20 text-slate-600">No activity recorded yet.</div></div>
+                        </div>
+                        <div class="glass p-6 rounded-2xl border border-slate-800 flex flex-col">
+                            <h3 class="font-bold text-white mb-4">📝 Scratchpad</h3>
+                            <textarea id="scratchpad" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs text-slate-300 font-mono resize-none focus:outline-none focus:border-brand-500" placeholder="Type temporary notes here... (Auto-saved)"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MATRIX VIEW (2-COLUMN) -->
+                <div id="view-matrix" class="hidden absolute inset-0 flex flex-col md:flex-row">
+                    <div class="flex-1 flex flex-col min-w-0 border-r border-slate-800 bg-slate-950">
+                        <div class="p-6 border-b border-slate-800 bg-slate-900 sticky top-0 z-10 shadow-xl">
+                            <div class="relative"><input type="text" id="matrixSearch" oninput="renderMatrix()" placeholder="Search violations..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-4 pl-12 text-sm text-white focus:border-brand-500 outline-none shadow-inner transition-all"><span class="absolute left-4 top-4 text-slate-500">🔍</span></div>
+                        </div>
+                        <div id="matrixList" class="flex-1 overflow-y-auto p-6 space-y-3 pb-20"></div>
+                    </div>
+                    <div class="w-full md:w-[450px] bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl z-20">
+                        <div class="p-6 border-b border-slate-800 bg-slate-900/95 backdrop-blur"><h3 class="text-xs font-black uppercase tracking-widest text-brand-500 mb-1">Combined Report</h3><p class="text-[10px] text-slate-500">Add violations from the left to build log.</p></div>
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div id="permissionWarning" class="hidden p-4 bg-red-950/40 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold flex items-center gap-3 shadow-lg"><span class="text-lg">⚠️</span><div><div class="uppercase tracking-wider opacity-75">Escalation Required</div><div class="text-white">Head Mod+ Authority Needed</div></div></div>
+                            <div class="space-y-2"><label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Offender Details</label><input id="incUser" type="text" placeholder="Username#0000" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-brand-500 outline-none transition-all shadow-sm"><input id="incId" type="text" placeholder="User ID (Snowflake)" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white focus:border-brand-500 outline-none transition-all shadow-sm"></div>
+                            <div class="space-y-2"><label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">Context / Evidence</label><textarea id="incDesc" placeholder="Describe the incident..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white h-24 resize-none focus:border-brand-500 outline-none transition-all shadow-sm"></textarea></div>
+                            <div class="bg-slate-950 rounded-xl border border-slate-800 p-4 shadow-inner">
+                                <div class="flex justify-between items-center mb-3 pb-3 border-b border-slate-800"><span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Violation List</span><button onclick="resetIncident()" class="text-[10px] font-bold text-red-400 hover:text-red-300 hover:underline transition">Clear All</button></div>
+                                <div id="selectedList" class="space-y-2 mb-4 min-h-[40px]"><div class="text-[10px] text-slate-600 italic text-center pt-2">Select violations from left...</div></div>
+                                <div class="pt-3 border-t border-slate-800"><span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Calculated Action</span><div id="incAction" class="font-black text-brand-500 text-lg">None</div><div id="incCalcReason" class="text-[10px] text-slate-500 italic mt-1">Waiting for input...</div></div>
+                            </div>
+                        </div>
+                        <div class="p-6 border-t border-slate-800 bg-slate-900/95 backdrop-blur"><button onclick="generateLog()" class="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-900/20 transition-all transform hover:scale-[1.02] active:scale-95">GENERATE LOG</button></div>
+                    </div>
+                </div>
+
+                <!-- HANDBOOK & TOOLS -->
+                <div id="view-handbook" class="hidden absolute inset-0 p-8 overflow-y-auto">
+                    <div class="glass p-8 rounded-3xl max-w-5xl mx-auto border border-slate-700">
+                        <div class="flex items-center gap-4 mb-8">
+                            <div class="p-3 bg-brand-500/10 rounded-2xl text-brand-500 border border-brand-500/20"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg></div>
+                            <div><h2 class="text-2xl font-bold text-white">Knowledge Base</h2><p class="text-slate-400 text-sm">Official Handbook FAQ & Procedures</p></div>
+                        </div>
+                        <input type="text" id="faqSearch" oninput="renderFAQ()" placeholder="Search 50+ topics..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-brand-500 transition-all mb-8 shadow-inner">
+                        <div id="faqContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </div>
+                </div>
+
+                <div id="view-tools" class="hidden absolute inset-0 p-8 overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="glass p-6 rounded-2xl border border-slate-700">
+                            <h3 class="text-white font-bold mb-4 flex items-center gap-2"><span class="text-brand-500">🕒</span> Timestamp</h3>
+                            <input type="datetime-local" id="tsInput" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white mb-4">
+                            <div class="flex gap-2"><button onclick="createTs('R')" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition">Relative</button><button onclick="createTs('f')" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition">Full</button></div>
+                            <div id="tsOutput" class="mt-4 p-3 bg-slate-950 rounded-lg border border-slate-800 text-center text-xs font-mono text-brand-500 select-all cursor-pointer hover:border-brand-500/50 transition">...</div>
+                        </div>
+                        <div class="glass p-6 rounded-2xl border border-slate-700">
+                            <h3 class="text-white font-bold mb-4 flex items-center gap-2"><span class="text-blue-500">⏳</span> Unban Calc</h3>
+                            <div class="flex gap-2 mb-4"><input id="unbanVal" type="number" placeholder="3" class="w-20 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white"><select id="unbanUnit" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white"><option value="d">Days</option><option value="h">Hours</option></select></div>
+                            <button onclick="calcUnban()" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-900/20 transition">Calculate</button>
+                            <div id="unbanOutput" class="mt-4 p-3 bg-slate-950 rounded-lg border border-slate-800 text-center text-xs font-mono text-blue-400">...</div>
+                        </div>
+                        <div class="glass p-6 rounded-2xl border border-slate-700">
+                            <h3 class="text-white font-bold mb-4 flex items-center gap-2"><span class="text-green-500">📎</span> Appeal Link Gen</h3>
+                            <input id="appealId" type="text" placeholder="User ID for Appeal..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white mb-4">
+                            <button onclick="genAppealLink()" class="w-full py-3 bg-green-700 hover:bg-green-600 text-white rounded-lg text-xs font-bold shadow-lg shadow-green-900/20 transition">Generate Link</button>
+                            <div id="appealOutput" class="mt-4 p-3 bg-slate-950 rounded-lg border border-slate-800 text-center text-xs font-mono text-green-400 select-all">...</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- LOG MODAL -->
+    <div id="logModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 flex items-center justify-center p-6 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-3xl w-full max-w-xl shadow-2xl relative animate-enter">
+            <h3 class="text-white font-bold text-xl mb-1">Log Generated</h3>
+            <p class="text-xs text-slate-500 mb-6">Ready for #mod-logs</p>
+            <textarea id="finalLogOutput" class="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-brand-400 mb-6 outline-none resize-none focus:border-brand-500/50 transition" readonly></textarea>
+            <div class="flex gap-3">
+                <button onclick="copyElement('finalLogOutput')" class="flex-1 py-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-900/20 transition">COPY TO CLIPBOARD</button>
+                <button onclick="document.getElementById('logModal').classList.add('hidden')" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RANKS = { 'Trial Moderator': 1, 'Moderator': 2, 'Head Moderator': 3, 'Staff Manager': 4 };
+        const RULES = [
+            { id: 1, name: "Respect & Behavior", items: [
+                { t: "Disrespect", v1: "Warning", v2: "Timeout 30m", v3: "Kick", note: "Rude/Insults" },
+                { t: "Toxicity", v1: "Warning", v2: "Timeout 1h", v3: "Kick", note: "Hostile tone" },
+                { t: "Hate Speech", v1: "Ban", v2: "Ban", v3: "Ban", note: "Zero Tolerance", lethal: true },
+                { t: "Threats", v1: "Ban", v2: "Ban", v3: "Ban", note: "Lethal", lethal: true },
+                { t: "Harassment", v1: "Timeout 1h", v2: "Timeout 24h", v3: "Ban", note: "Targeting users" }
+            ]},
+            { id: 2, name: "Content Safety", items: [
+                { t: "NSFW", v1: "Del+Warn", v2: "Timeout", v3: "Ban", note: "Explicit content" },
+                { t: "Graphic Violence", v1: "Timeout", v2: "Kick", v3: "Ban", note: "Gore" },
+                { t: "Illegal Content", v1: "Ban", v2: "Ban", v3: "Ban", note: "Mandatory Escalation", lethal: true },
+                { t: "Scams", v1: "Ban", v2: "Ban", v3: "Ban", note: "Phishing links", lethal: true }
+            ]},
+            { id: 3, name: "Language Policy", items: [
+                { t: "Non-English", v1: "Warn", v2: "Warn", v3: "Timeout", note: "Public chat" },
+                { t: "Excessive Profanity", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Keep it reasonable" }
+            ]},
+            { id: 4, name: "Spam", items: [
+                { t: "Chat Spam", v1: "Warn", v2: "Timeout 15m", v3: "Kick", note: "Flooding" },
+                { t: "Ads/Self-Promo", v1: "Warn+Del", v2: "Ban", v3: "Ban", note: "Unsolicited links" }
+            ]},
+            { id: 5, name: "Impersonation", items: [
+                { t: "Staff Impersonation", v1: "Ban", v2: "Ban", v3: "Ban", note: "Zero Tolerance", lethal: true },
+                { t: "User Impersonation", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Malicious intent" }
+            ]},
+            { id: 6, name: "Privacy", items: [
+                { t: "Doxing", v1: "Ban", v2: "Ban", v3: "Ban", note: "Real info sharing", lethal: true }
+            ]},
+            { id: 7, name: "Cross-Platform", items: [
+                { t: "External Drama", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Keep server clean" }
+            ]},
+            { id: 8, name: "Internal Content", items: [
+                { t: "NDA Leaks", v1: "Ban", v2: "Ban", v3: "Ban", note: "Studio secrets", lethal: true }
+            ]},
+            { id: 9, name: "Cheating/Illegal", items: [
+                { t: "Exploits", v1: "Timeout", v2: "Ban", v3: "Ban", note: "Report privately" },
+                { t: "Piracy", v1: "Ban", v2: "Ban", v3: "Ban", note: "Zero tolerance", lethal: true }
+            ]},
+            { id: 10, name: "Voice Chat", items: [
+                { t: "Disruptive Audio", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Earrape/Noise" },
+                { t: "Recording", v1: "Warn", v2: "Timeout", v3: "Ban", note: "No consent" }
+            ]},
+            { id: 11, name: "Moderation", items: [
+                { t: "Ignoring Staff", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Non-compliance" },
+                { t: "Ban Evasion", v1: "Ban", v2: "Ban", v3: "Ban", note: "Alt accounts", lethal: true },
+                { t: "Mini-modding", v1: "Warn", v2: "Timeout", v3: "Kick", note: "Report instead" }
+            ]},
+            { id: 12, name: "Updates", items: [
+                { t: "Ignorance", v1: "Enforce", v2: "Enforce", v3: "Enforce", note: "Not an excuse" }
+            ]}
+        ];
+        
+        const FAQ_DATA = [
+            { q: "What is the core purpose of staff?", a: "To protect the community, support players, and uphold professionalism (Foreword)." },
+            { q: "Can I share the Handbook?", a: "No. It is classified Internal Use Only. Unauthorized disclosure leads to termination." },
+            { q: "What if the Handbook conflicts with a verbal order?", a: "The Handbook takes precedence (Section 14.3)." },
+            { q: "Who resolves interpretation disputes?", a: "The Staff Manager resolves interpretation disputes." },
+            { q: "Who has final authority?", a: "The Community Manager has final interpretation authority (Section 14.3)." },
+            { q: "Can I ban a friend?", a: "No. You must remain neutral. Ask another staff member to handle it." },
+            { q: "What are Zero Tolerance violations?", a: "Hate speech, threats, doxing, ban evasion, illegal content, and leaks." },
+            { q: "Can Trial Moderators ban?", a: "No. Trial Mods must escalate bans to Moderators or Head Mods." },
+            { q: "How do I handle a Raid?", a: "Lockdown all channels immediately and notify Head Moderators." },
+            { q: "Is recording in VC allowed?", a: "No. Recording voice or video without consent is forbidden (Rule 10)." },
+            { q: "What is the policy on 'Mini-modding'?", a: "Users should report issues, not act as staff. Warn them if disruptive (Rule 11)." },
+            { q: "Can I use an alt account?", a: "Not to evade bans or deceive staff. Ban evasion results in a permanent ban (Rule 11)." },
+            { q: "How do I handle exploits?", a: "Delete public discussion immediately. Report details privately to developers (Rule 9)." },
+            { q: "Is 'I didn't know' a valid excuse?", a: "No. Ignorance of rules is not a defense (Rule 12)." },
+            { q: "What is the language policy?", a: "English only in public channels to ensure effective moderation (Rule 3)." },
+            { q: "How to handle self-promotion?", a: "Warn and delete unsolicited links. Ban if persistent (Rule 4)." },
+            { q: "What counts as Doxing?", a: "Sharing private real-world info (Name, Address, School) without consent (Rule 6)." },
+            { q: "Can I accept gifts from users?", a: "Generally discouraged to maintain the appearance of neutrality." },
+            { q: "What timezone do we use?", a: "All official logs and shifts use Marseille (MRS) time." },
+            { q: "How do I handle a DM appeal?", a: "Do not handle appeals in DMs. Redirect the user to the official appeal form." },
+            { q: "What is the strike system?", a: "Typically Warning -> Timeout -> Kick -> Ban, unless the offense is severe." },
+            { q: "Can I moderate in a channel I'm active in?", a: "Yes, but if you are part of the argument, step back and let another mod handle it." },
+            { q: "What if a user argues with my decision?", a: "Do not argue publicly. Direct them to the ticket system/appeals." },
+            { q: "How to handle NSFW content?", a: "Delete immediately. Timeout or Ban depending on severity (Rule 2)." },
+            { q: "Are political discussions allowed?", a: "Avoid divisive topics. If it gets heated/toxic, stop the conversation (Rule 2)." },
+            { q: "What defines 'Toxic Behavior'?", a: "Passive aggression, hostile tone, or baiting (Rule 1)." },
+            { q: "How to handle impersonation?", a: "If impersonating staff, immediate ban. If user, warn/kick (Rule 5)." },
+            { q: "Can I edit the rules?", a: "No. Only Community Manager or Staff Manager (with approval) can amend rules." },
+            { q: "What if a provision is invalid?", a: "Severability applies; the rest of the handbook remains in force (Section 14.4)." },
+            { q: "Does holding a staff role mean I agree to this?", a: "Yes. Participation constitutes ongoing acceptance of policies (Section 14.5)." },
+            { q: "How do I log a verbal warning?", a: "Even verbal warnings should be noted in the mod logs for record keeping." },
+            { q: "What if a user has a offensive username?", a: "Ask them to change it. If they refuse/cant, change it for them or kick." },
+            { q: "How to handle cross-platform drama?", a: "Shut it down. Keep the server clean of external beefs (Rule 7)." },
+            { q: "What is 'Loophole Abuse'?", a: "Intentionally circumventing the spirit of the rules. Treat as a violation (Rule 11)." },
+            { q: "Can I leak upcoming game features?", a: "Absolutely not. NDA breach is immediate termination and ban (Rule 8)." },
+            { q: "What if a user claims to be a dev?", a: "Check their roles. If not verified, ban for impersonation (Rule 5)." },
+            { q: "How to handle spam bots?", a: "Immediate Ban. Clean up messages." },
+            { q: "What constitutes 'Disruptive Audio'?", a: "Earrape, loud background noise, or screaming in VC (Rule 10)." },
+            { q: "Can users stream in VC?", a: "Yes, as long as content is appropriate (PG-13) and follows rules." },
+            { q: "How to handle piracy discussion?", a: "Zero tolerance. Ban for sharing cracks/illegal downloads (Rule 9)." },
+            { q: "What if a user threatens self-harm?", a: "Escalate to Staff Manager. Provide Discord Safety resources. Do not counsel them yourself." },
+            { q: "Can I use the ban hammer for fun?", a: "No. Abuse of power is grounds for removal." },
+            { q: "What if a mistake is made?", a: "Own it. Inform a superior and correct the action. Integrity is key." },
+            { q: "How often should I check mod logs?", a: "Stay updated on recent actions to avoid double-punishing." },
+            { q: "Can I delete messages?", a: "Yes, if they violate rules. Log the deletion if significant." },
+            { q: "What if a user blocks me?", a: "You can still moderate them. If they can't hear warnings, use Timeouts." },
+            { q: "How to handle severe harassment?", a: "Skip warnings. Move to Timeout or Ban to protect the victim (Rule 1)." },
+            { q: "What if a user spams pings?", a: "Warn. If continued, Timeout. Considered spam (Rule 4)." },
+            { q: "Can I be AFK on shift?", a: "No. If you are 'On Duty', you must be available." },
+            { q: "Where do I find the amendment log?", a: "Check with the Staff Manager for the latest version history." }
+        ];
+
+        let app = { user: null, rank: null, level: 0, incidents: [], shiftStart: null, openSections: [] };
+        let shiftInterval;
+
+        window.onload = () => {
+            const saved = localStorage.getItem('ro_user');
+            if(saved) document.getElementById('loginName').value = saved;
+            
+            // Restore Scratchpad
+            const scratch = localStorage.getItem('ro_scratchpad');
+            if(scratch) document.getElementById('scratchpad').value = scratch;
+            
+            // Clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clockUTC').innerText = now.toLocaleTimeString('en-GB', {timeZone:'UTC'});
+                document.getElementById('clockMRS').innerText = now.toLocaleTimeString('en-GB', {timeZone:'Europe/Paris'});
+            }, 1000);
+
+            // Restore Shift
+            const savedShift = localStorage.getItem('ro_shift_start');
+            if(savedShift) {
+                app.shiftStart = parseInt(savedShift);
+                startShiftTimer();
+                updateShiftUI(true);
+            }
+            loadStats();
+            
+            // Scratchpad Auto-Save
+            document.getElementById('scratchpad').addEventListener('input', (e) => {
+                localStorage.setItem('ro_scratchpad', e.target.value);
+            });
+        };
+
+        function attemptLogin() {
+            const name = document.getElementById('loginName').value.trim();
+            const rank = document.getElementById('loginRank').value;
+            if(name.length < 3) return alert("Invalid Name");
+            
+            app.user = name;
+            app.rank = rank;
+            app.level = RANKS[rank];
+            localStorage.setItem('ro_user', name);
+
+            document.getElementById('userNameDisplay').innerText = name;
+            document.getElementById('userRankDisplay').innerText = rank;
+            document.getElementById('portalView').style.display = 'none';
+            document.getElementById('mainView').classList.remove('hidden');
+            
+            nav('matrix');
+            renderMatrix();
+            renderFAQ();
+        }
+
+        function nav(id) {
+            ['dashboard', 'matrix', 'handbook', 'tools'].forEach(v => {
+                document.getElementById('view-'+v).classList.add('hidden');
+                document.getElementById('btn-'+v).classList.remove('glass-active', 'text-white');
+            });
+            document.getElementById('view-'+id).classList.remove('hidden');
+            document.getElementById('btn-'+id).classList.add('glass-active', 'text-white');
+            
+            const titles = { 'dashboard': 'Mission Control', 'matrix': 'Rescue Ops: Wildfire', 'handbook': 'Knowledge Base', 'tools': 'Staff Utilities' };
+            document.getElementById('pageTitle').innerText = titles[id] || 'Rescue Ops: Wildfire';
+            if(id === 'matrix') renderMatrix();
+        }
+
+        // --- SHIFT LOGIC ---
+        function toggleShift() {
+            if(app.shiftStart) {
+                const dur = document.getElementById('shiftTimer').innerText;
+                logActivity(`Shift Ended (${dur})`);
+                app.shiftStart = null;
+                localStorage.removeItem('ro_shift_start');
+                clearInterval(shiftInterval);
+                document.getElementById('shiftTimer').innerText = "00:00:00";
+                let hours = parseFloat(localStorage.getItem('ro_total_hours') || '0');
+                const [h, m] = dur.split(':');
+                hours += parseInt(h) + (parseInt(m)/60);
+                localStorage.setItem('ro_total_hours', hours.toFixed(1));
+                updateShiftUI(false);
+                loadStats();
+                showToast("Shift Ended", "Hours Logged");
+            } else {
+                app.shiftStart = Date.now();
+                localStorage.setItem('ro_shift_start', app.shiftStart);
+                startShiftTimer();
+                updateShiftUI(true);
+                logActivity("Shift Started");
+                showToast("Shift Started", "Timer Active");
+            }
+        }
+
+        function startShiftTimer() {
+            clearInterval(shiftInterval);
+            shiftInterval = setInterval(() => {
+                const diff = Date.now() - app.shiftStart;
+                const h = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                document.getElementById('shiftTimer').innerText = `${h}:${m}:${s}`;
+            }, 1000);
+        }
+
+        function updateShiftUI(active) {
+            const btn = document.getElementById('shiftBtn');
+            const stat = document.getElementById('statStatus');
+            if(active) {
+                btn.innerText = "END SHIFT";
+                btn.classList.replace('bg-slate-800', 'bg-red-600');
+                btn.classList.replace('hover:bg-brand-600', 'hover:bg-red-500');
+                stat.innerText = "On Duty";
+                stat.className = "text-xl font-black text-green-400";
+            } else {
+                btn.innerText = "START SHIFT";
+                btn.classList.replace('bg-red-600', 'bg-slate-800');
+                btn.classList.replace('hover:bg-red-500', 'hover:bg-brand-600');
+                stat.innerText = "Off Duty";
+                stat.className = "text-xl font-black text-white";
+            }
+        }
+
+        // --- MATRIX LOGIC (PERSISTENT ACCORDION) ---
+        function renderMatrix() {
+            const search = document.getElementById('matrixSearch').value.toLowerCase();
+            const list = document.getElementById('matrixList');
+            list.innerHTML = "";
+
+            RULES.forEach(cat => {
+                const rules = cat.items.filter(r => r.t.toLowerCase().includes(search) || cat.name.toLowerCase().includes(search));
+                
+                if(rules.length > 0) {
+                    const section = document.createElement('div');
+                    section.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden mb-2 shadow-sm";
+                    
+                    const isSearching = search.length > 0;
+                    const isOpen = isSearching || app.openSections.includes('sec-' + cat.id);
+                    const headerClass = isOpen ? "bg-slate-800 text-brand-400" : "hover:bg-slate-800 text-slate-500";
+                    const contentClass = isOpen ? "accordion-open" : "";
+                    const arrowRot = isOpen ? "rotate-180" : "";
+
+                    section.innerHTML = `
+                        <button onclick="toggleSection('sec-${cat.id}')" class="w-full p-4 flex justify-between items-center ${headerClass} transition-colors text-left group">
+                            <span class="text-xs font-black uppercase tracking-widest group-hover:text-brand-400">Rule ${cat.id}: ${cat.name}</span>
+                            <span id="arrow-sec-${cat.id}" class="text-slate-500 transition-transform ${arrowRot}">▼</span>
+                        </button>
+                        <div id="sec-${cat.id}" class="accordion-content ${contentClass} bg-slate-950/50">
+                            <div class="p-3 space-y-2">
+                                ${rules.map(r => `
+                                    <div class="bg-slate-900 border border-slate-800 p-3 rounded-lg group hover:border-brand-500/30 transition shadow-inner">
+                                        <div class="flex justify-between mb-2">
+                                            <div>
+                                                <div class="font-bold text-sm text-white">${r.t} ${r.lethal ? '<span class="text-red-500 text-[10px] ml-1">⚠</span>' : ''}</div>
+                                                <div class="text-[10px] text-slate-500">${r.note}</div>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button onclick="toggle('${r.t}', '${r.v1}', 1, ${r.lethal})" class="flex-1 py-1 rounded text-[10px] font-bold border ${checkSel(r.t,1) ? 'btn-selected' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}">1ST</button>
+                                            <button onclick="toggle('${r.t}', '${r.v2}', 2, ${r.lethal})" class="flex-1 py-1 rounded text-[10px] font-bold border ${checkSel(r.t,2) ? 'btn-selected' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}">2ND</button>
+                                            <button onclick="toggle('${r.t}', '${r.v3}', 3, ${r.lethal})" class="flex-1 py-1 rounded text-[10px] font-bold border ${checkSel(r.t,3) ? 'btn-selected' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'}">3RD</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(section);
+                }
+            });
+        }
+
+        function toggleSection(id) {
+            const index = app.openSections.indexOf(id);
+            if (index > -1) {
+                app.openSections.splice(index, 1);
+            } else {
+                app.openSections.push(id);
+            }
+            renderMatrix();
+        }
+
+        function checkSel(rule, tier) {
+            return app.incidents.some(i => i.rule === rule && i.tier === tier);
+        }
+
+        function toggle(rule, action, tier, lethal) {
+            const idx = app.incidents.findIndex(i => i.rule === rule && i.tier === tier);
+            if (idx > -1) app.incidents.splice(idx, 1);
+            else app.incidents.push({ rule, action, tier, lethal });
+            
+            renderMatrix();
+            updateBuilder();
+        }
+
+        function updateBuilder() {
+            const list = document.getElementById('selectedList');
+            const resultDisplay = document.getElementById('incAction');
+            const reasonDisplay = document.getElementById('incCalcReason');
+            const warnBox = document.getElementById('permissionWarning');
+
+            if(app.incidents.length === 0) {
+                list.innerHTML = `<div class="text-[10px] text-slate-600 italic text-center pt-2">Select violations from left...</div>`;
+                resultDisplay.innerText = "None";
+                reasonDisplay.innerText = "Waiting for input...";
+                warnBox.classList.add('hidden');
+                return;
+            }
+
+            list.innerHTML = app.incidents.map(i => `
+                <div class="flex justify-between items-center text-[10px] bg-slate-900 border border-slate-800 p-2 rounded-lg text-slate-300">
+                    <span class="font-bold text-white">${i.rule} <span class="text-slate-500 font-normal">(${i.tier}${i.tier===1?'st':i.tier===2?'nd':'rd'})</span></span>
+                    <span class="text-brand-500">${i.action}</span>
+                </div>
+            `).join('');
+
+            // CUMULATIVE LOGIC
+            let totalWarns = 0, totalKicks = 0, hasBan = false, maxSeverity = 0;
+            let finalAction = "Unknown";
+
+            app.incidents.forEach(i => {
+                if (i.lethal || i.action.includes('Ban')) { hasBan = true; maxSeverity = 4; }
+                else if (i.action.includes('Kick')) { totalKicks++; if(maxSeverity < 3) maxSeverity = 3; }
+                else if (i.action.includes('Timeout')) { if(maxSeverity < 2) maxSeverity = 2; }
+                else if (i.action.includes('Warn')) { totalWarns++; if(maxSeverity < 1) maxSeverity = 1; }
+            });
+
+            let calcReason = "Highest Severity";
+
+            if (hasBan || totalKicks >= 4) {
+                finalAction = "Permanent Ban";
+                calcReason = hasBan ? "Lethal Violation Selected" : "Accumulated 4+ Kicks";
+                maxSeverity = 4;
+            } else if (totalWarns >= 3) {
+                finalAction = "Timeout (Mute)";
+                calcReason = "Accumulated 3+ Warnings";
+                maxSeverity = 2; 
+            } else {
+                const highest = app.incidents.reduce((prev, current) => {
+                    const weight = (a) => a.includes('Ban')?4 : a.includes('Kick')?3 : a.includes('Timeout')?2 : 1;
+                    return (weight(current.action) > weight(prev.action)) ? current : prev;
+                });
+                finalAction = highest.action;
+            }
+
+            resultDisplay.innerText = finalAction;
+            reasonDisplay.innerText = calcReason;
+
+            const restricted = (finalAction.includes('Ban') || finalAction.includes('Kick') || maxSeverity >= 3) && app.level < 3;
+            if(restricted) warnBox.classList.remove('hidden'); else warnBox.classList.add('hidden');
+        }
+
+        function generateLog() {
+            if(app.incidents.length === 0) return showToast("Error", "Select a violation first");
+            const user = document.getElementById('incUser').value || "Unknown";
+            const id = document.getElementById('incId').value || "N/A";
+            const desc = document.getElementById('incDesc').value || "No context provided.";
+            const finalAction = document.getElementById('incAction').innerText;
+            
+            // Smart Timestamp
+            const now = new Date();
+            const tsCode = `<t:${Math.floor(now.getTime()/1000)}:f>`;
+            const mrsTime = now.toLocaleString('en-GB', {timeZone:'Europe/Paris'});
+
+            const violationsList = app.incidents.map(i => `• ${i.rule} (${i.action})`).join('\n');
+
+            const log = `**[INCIDENT LOG]**
+**Date: ${tsCode} | ${mrsTime} (MRS)**
+Mod: ${app.user} (${app.rank})
+
+**User: ${user}**
+ID: ${id}
+
+**__VIOLATIONS:__**
+${violationsList}
+
+**__ACTION:__**
+${finalAction}
+
+**__CONTEXT:__**
+${desc}`;
+            document.getElementById('finalLogOutput').value = log;
+            document.getElementById('logModal').classList.remove('hidden');
+            
+            let count = parseInt(localStorage.getItem('ro_incidents') || '0') + 1;
+            localStorage.setItem('ro_incidents', count);
+            logActivity(`Report filed: ${user}`);
+            loadStats();
+        }
+
+        // --- UTILS & HELPERS ---
+        function loadStats() {
+            document.getElementById('statHours').innerText = localStorage.getItem('ro_total_hours') || '0.0';
+            document.getElementById('statIncidents').innerText = localStorage.getItem('ro_incidents') || '0';
+            
+            const logs = JSON.parse(localStorage.getItem('ro_activity_logs') || '[]');
+            const feed = document.getElementById('activityFeed');
+            if(logs.length > 0) feed.innerHTML = logs.map(l => `<div class="border-b border-slate-800 pb-2 mb-2 last:border-0"><span class="text-brand-500 font-bold block text-[10px] uppercase tracking-widest">${l.time}</span> ${l.msg}</div>`).join('');
+            else feed.innerHTML = '<div class="text-center italic pt-10 text-slate-600">No activity logged.</div>';
+        }
+
+        function logActivity(msg) {
+            const d = new Date();
+            const dateStr = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+            const timeStr = d.toLocaleTimeString('en-GB', {timeZone:'Europe/Paris', hour:'2-digit', minute:'2-digit'});
+            const displayTime = `${dateStr} ${timeStr}`;
+            
+            const logs = JSON.parse(localStorage.getItem('ro_activity_logs') || '[]');
+            logs.unshift({time: displayTime, msg: msg});
+            if(logs.length > 50) logs.pop();
+            localStorage.setItem('ro_activity_logs', JSON.stringify(logs));
+            loadStats();
+        }
+
+        function clearActivity() { 
+            localStorage.removeItem('ro_activity_logs'); 
+            loadStats(); 
+            showToast("Cleared", "Activity log reset");
+        }
+
+        function createTs(f) {
+            const v = document.getElementById('tsInput').value;
+            if(v) {
+                const u = Math.floor(new Date(v).getTime()/1000);
+                document.getElementById('tsOutput').innerText = `<t:${u}:${f}>`;
+                showToast("Success", "Timestamp copied");
+            }
+        }
+
+        function calcUnban() {
+            const val = parseInt(document.getElementById('unbanVal').value);
+            const unit = document.getElementById('unbanUnit').value;
+            if(val) {
+                const d = new Date();
+                if(unit=='h') d.setHours(d.getHours()+val);
+                if(unit=='d') d.setDate(d.getDate()+val);
+                document.getElementById('unbanOutput').innerText = d.toLocaleString('en-GB', {timeZone:'Europe/Paris'}) + " MRS";
+            }
+        }
+
+        function genAppealLink() {
+            const uid = document.getElementById('appealId').value.trim();
+            if(uid) {
+                // Placeholder appeal logic - replace URL if known
+                document.getElementById('appealOutput').innerText = `https://rescueops.gg/appeal?uid=${uid}`;
+                showToast("Success", "Appeal link generated");
+            } else {
+                showToast("Error", "Enter User ID first");
+            }
+        }
+
+        function copyRaidCmd() {
+            navigator.clipboard.writeText("!lockdown all");
+            showToast("Copied", "Lockdown command ready");
+        }
+
+        function renderFAQ() {
+            const search = document.getElementById('faqSearch').value.toLowerCase();
+            const container = document.getElementById('faqContainer');
+            container.innerHTML = "";
+            FAQ_DATA.filter(f => f.q.toLowerCase().includes(search)).forEach(f => {
+                const el = document.createElement('div');
+                el.className = "bg-slate-900 border border-slate-800 p-4 rounded-xl hover:border-slate-700 transition shadow-sm";
+                el.innerHTML = `<div class="text-brand-500 font-bold text-xs mb-2 uppercase tracking-wider">Q: ${f.q}</div><div class="text-slate-400 text-xs leading-relaxed">${f.a}</div>`;
+                container.appendChild(el);
+            });
+        }
+
+        function copyElement(id) {
+            document.getElementById(id).select();
+            document.execCommand('copy');
+            showToast("Success", "Copied to clipboard");
+        }
+
+        function showToast(title, msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMsg').innerText = msg;
+            t.classList.remove('translate-x-full');
+            setTimeout(() => t.classList.add('translate-x-full'), 3000);
+        }
+
+        function resetIncident() {
+            document.getElementById('incUser').value = "";
+            document.getElementById('incId').value = "";
+            document.getElementById('incDesc').value = "";
+            document.getElementById('incAction').innerText = "None";
+            document.getElementById('incCalcReason').innerText = "Waiting for input...";
+            document.getElementById('permissionWarning').classList.add('hidden');
+            document.getElementById('selectedList').innerHTML = `<div class="text-[10px] text-slate-600 italic text-center pt-2">Select violations from left...</div>`;
+            app.incidents = [];
+            app.openSections = []; // Also close dropdowns on full reset
+            renderMatrix();
+        }
+
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
